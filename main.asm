@@ -3,11 +3,76 @@
 ; Params = Parametros
 ; *********************
 
-; S: Pausa
 ; D: Pausa la ejecucion del programa hasta que el usuario presione ENTER
 mPausaE MACRO
   MOV AH, 0AH
   INT 21H
+ENDM
+
+; S: Se encarga de determinar el color de un pixel que esta ubicado en un sprite, para esto es necesario utilizar los registros AX (x) y BX (y). El color encontrado se almacena en la variable 'aux_color_pixel'
+; codigo_sprite: Es el codigo de sprite que se esta escogiendo para pintar el bloque
+mColorPosSprite MACRO codigo_sprite
+
+  LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA, L_OBJETIVO, L_COLOR, L_FIN
+
+  PUSH AX
+  PUSH BX
+
+  CMP codigo_sprite, 01H
+  JE L_PARED
+
+  CMP codigo_sprite, 02H
+  JE L_SUELO
+
+  CMP codigo_sprite, 03H
+  JE L_JUGADOR
+
+  CMP codigo_sprite, 04H
+  JE L_CAJA
+
+  CMP codigo_sprite, 05H
+  JE L_OBJETIVO
+
+  L_VACIO:
+    MOV SI, offset sprite_vacio
+  JMP L_COLOR
+
+  L_PARED:
+    MOV SI, offset sprite_pared
+  JMP L_COLOR
+
+  L_SUELO:
+    MOV SI, offset sprite_suelo
+  JMP L_COLOR
+
+  L_CAJA:
+    MOV SI, offset sprite_caja
+  JMP L_COLOR
+
+  L_JUGADOR:
+    MOV SI, offset sprite_jugador
+  JMP L_COLOR
+
+  L_OBJETIVO:
+    MOV SI, offset sprite_objetivo
+  JMP L_COLOR
+
+  L_COLOR:
+    ; Se realiza el calculo de x * 8 y el resultado se obtiene el registro AX
+    MOV DX, 08H
+    MUL DX
+    ; Se realiza el calculo de AX + y para posicionar el indice de lectura. Hay que recordar que el resultado se mantiene en AX
+    ADD AX, BX
+    ADD SI, AX
+    ; Se obtiene el color
+    MOV AX, 00H
+    MOV AL, [SI]
+    MOV aux_color_pixel, AL
+
+  L_FIN:
+    POP BX
+    POP AX
+
 ENDM
 
 ; D: Se encarga de pintar un pixel en un lienzo de 320 x 200 ; Para realizar el pintado se aplica la siguiente ecuacion para hallar la posicion en memoria (x + 320y)
@@ -17,20 +82,20 @@ ENDM
 mPintarPixel MACRO x, y, color
 
   ; Se inicializan las variables a utilizar para el pintado de un pixel
-  MOV aux_coord_x_sprite, x
-  MOV aux_coord_y_sprite, y
+  MOV aux_pos_x_pixel, x
+  MOV aux_pos_y_pixel, y
 
   ; Se inicializan los registros a utilizar
   MOV AX, 0000H
   MOV BX, 0000H
 
   ; Calculo de 320 * x
-  MOV AX, aux_coord_x_sprite
+  MOV AX, aux_pos_x_pixel
   MOV BX, 140H
   MUL BX
 
   ; Calculo de y + 320 * x
-  ADD AX, aux_coord_y_sprite
+  ADD AX, aux_pos_y_pixel
 
   ; Se almacena el color
   MOV BL, color
@@ -46,18 +111,17 @@ mPintarPixel MACRO x, y, color
   MOV SI, AX
 
   ; Se setea el color
-  MOV AL, BL
-  MOV [SI], AL
+  MOV [SI], BL
 
   ; Se recupera la posicion del segmento de datos
   POP DS
 
 ENDM
 
-; D: Se encarga de pintar un bloque de 8x8
+; D: Se encarga de pintar un sprite de 8x8 pixeles
 ; pos: Representa la posicion entre 0 a 1000 debido a que el lienzo es de 40 x 25 = 1000
-; color: Codigo del color a pintar en el pixel
-mPintarBloque MACRO pos, color
+; codigo_sprite: Es el sprite a pintar en la posicion indicada
+mPintarSprite MACRO pos, codigo_sprite
 
   LOCAL L_FILA, L_COLUMNA
 
@@ -102,10 +166,11 @@ mPintarBloque MACRO pos, color
     L_COLUMNA:
       PUSH BX ; Se almacena temporalmente el indice de la columna
       PUSH AX ; Se almacena temporalmente el indice de la fila
+      mColorPosSprite codigo_sprite ; Se determina el color del pixel a pintar
 
       ADD AX, aux_pos_x_sprite ; Se realiza el corrimiento de pintado por parte de la columna
       ADD BX, aux_pos_y_sprite ; Se realiza el corrimiento de pintado por parte de la fila
-      mPintarPixel AX, BX, color
+      mPintarPixel AX, BX, aux_color_pixel
 
       POP AX
       POP BX
@@ -120,14 +185,14 @@ mPintarBloque MACRO pos, color
 
 ENDM
 
-; D: Se encarga de dibujar en el lienzo de 320 x 200 los colores contenidos en la variable 'sprite'
-mPintarSprite MACRO lienzo
+; D: Se encarga de dibujar en el lienzo (40 x 25) los sprite segun los codigos contenidos en la variable 'lienzo'
+mPintarLienzo MACRO
 
   LOCAL L_LECTURA
 
   ; Se inicializan los parametros auxiliares
   MOV aux_iteracion_sprite, 0000H
-  MOV aux_color_sprite, 00H
+  MOV aux_codigo_sprite, 00H
 
   ; Se inicializan los registros a utilizar
   MOV AX, 0000H
@@ -142,8 +207,8 @@ mPintarSprite MACRO lienzo
     PUSH DI
 
     MOV AL, [DI] ; Se obtiene el color del lienzo
-    MOV aux_color_sprite, AL ; Se setea el color en la variable auxiliar que maneja el color a pintar
-    mPintarBloque aux_iteracion_sprite, aux_color_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+    MOV aux_codigo_sprite, AL ; Se setea el color en la variable auxiliar que maneja el color a pintar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
 
     POP DI
     INC DI
@@ -166,44 +231,105 @@ ENDM
 
   ; Sprite
   aux_iteracion_sprite dw 0000H ; Indica la iteracion actual en el que se esta leyendo la variable 'sprite'
-  aux_color_sprite db 00H ; Indica el color del pixel a pintar
+  aux_codigo_sprite db 00H ; Indica el codigo de sprite a utilizar para el pintado de un bloque de pixeles de 8x8
+  aux_color_pixel db 00H ; Indica el color del pixel a pintar
   aux_pos_x_sprite dw 0000H ; Indica la posicion inicial de pintado de un bloque en una fila
   aux_pos_y_sprite dw 0000H ; Indica la posicion inicial de pintado de un bloque en una columna
-  aux_coord_x_sprite dw 0000H ; Indica la posicion de pintado de un solo pixel en una fila
-  aux_coord_y_sprite dw 0000H ; Indica la posicion de pintado de un solo pixel en una columna
+  aux_pos_x_pixel dw 0000H ; Indica la posicion de pintado de un solo pixel en una fila
+  aux_pos_y_pixel dw 0000H ; Indica la posicion de pintado de un solo pixel en una columna
 
   ; **************************************
   ; ****** Utilizados en ejecucion *******
   ; **************************************
 
-  ; Sprite
-  ; sprite db 03E8H dup(06H) ; Dimension 40 x 25 = 1000 posiciones
-
-  nivel_1  db  00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
-          db  16H, 16H, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 0AH, 16H, 16H
+  ; Lienzo
+  ; lienzo db 03E8H dup(06H) ; Dimension 40 x 25 = 1000 posiciones
+  lienzo  db  00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+          db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
+          db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 05H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 03H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 04H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
+          db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
           db  00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+
+  ; Sprites
+  ; Codigo 00H
+  sprite_vacio    db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+                  db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
+
+  ; Codigo 01H
+  sprite_pared    db   1AH, 1AH, 1AH, 1AH, 12H, 1FH, 1AH, 1AH
+                  db   1AH, 1AH, 1AH, 1AH, 12H, 1FH, 1AH, 1AH
+                  db   12H, 12H, 12H, 12H, 12H, 12H, 12H, 12H
+                  db   12H, 1FH, 1FH, 1FH, 1FH, 1FH, 1FH, 1FH
+                  db   12H, 1FH, 1AH, 1AH, 1AH, 1AH, 1AH, 1AH
+                  db   12H, 1FH, 1AH, 1AH, 1AH, 1AH, 1AH, 1AH
+                  db   12H, 12H, 12H, 12H, 12H, 12H, 12H, 12H
+                  db   1FH, 1FH, 1FH, 1FH, 12H, 1FH, 1FH, 1FH
+
+  ; Codigo 02H
+  sprite_suelo    db   48H, 02H, 48H, 48H, 48H, 48H, 48H, 48H
+                  db   48H, 48H, 48H, 48H, 48H, 02H, 48H, 48H
+                  db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
+                  db   02H, 48H, 48H, 02H, 48H, 48H, 02H, 48H
+                  db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
+                  db   48H, 48H, 48H, 02H, 48H, 48H, 48H, 48H
+                  db   48H, 02H, 48H, 48H, 48H, 48H, 02H, 48H
+                  db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
+
+  ; Codigo 03H
+  sprite_jugador  db   48H, 48H, 28H, 28H, 28H, 28H, 48H, 48H
+                  db   48H, 48H, 28H, 28H, 28H, 48H, 28H, 48H
+                  db   48H, 48H, 43H, 01H, 43H, 01H, 48H, 48H
+                  db   48H, 48H, 43H, 43H, 06H, 06H, 48H, 48H
+                  db   48H, 28H, 01H, 28H, 28H, 01H, 28H, 48H
+                  db   48H, 43H, 01H, 01H, 01H, 01H, 43H, 48H
+                  db   48H, 48H, 01H, 01H, 01H, 01H, 48H, 48H
+                  db   48H, 48H, 06H, 48H, 48H, 06H, 48H, 48H
+
+  ; Codigo 04H
+  sprite_caja     db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
+                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                  db   0B9H, 006H, 006H, 01BH, 018H, 006H, 006H, 0B9H
+                  db   0B9H, 0B9H, 0B9H, 01BH, 018H, 0B9H, 0B9H, 0B9H
+                  db   0B9H, 006H, 006H, 018H, 018H, 006H, 006H, 0B9H
+                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                  db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
+
+  ; Codigo 05H
+  sprite_objetivo db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
+                  db   48H, 48H, 41H, 41H, 41H, 41H, 48H, 48H
+                  db   48H, 41H, 41H, 41H, 41H, 41H, 41H, 48H
+                  db   48H, 41H, 41H, 41H, 41H, 41H, 41H, 48H
+                  db   48H, 41H, 41H, 41H, 41H, 41H, 41H, 48H
+                  db   48H, 41H, 41H, 41H, 41H, 41H, 41H, 48H
+                  db   48H, 48H, 41H, 41H, 41H, 41H, 48H, 48H
+                  db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
 
 .CODE
 .STARTUP
@@ -219,8 +345,7 @@ ENDM
     INT 10
 
     ; Se pinta el sprite
-    mPintarSprite nivel_1
-    mPausaE
+    mPintarLienzo
     mPausaE
 
   MODO_VIDEO ENDP
