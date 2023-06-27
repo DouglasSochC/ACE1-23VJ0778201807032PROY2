@@ -11,7 +11,7 @@ ENDM
 
 ; S: Se encarga de determinar el color de un pixel que esta ubicado en un sprite, para esto es necesario utilizar los registros AX (x) y BX (y). El color encontrado se almacena en la variable 'aux_color_pixel'
 ; codigo_sprite: Es el codigo de sprite que se esta escogiendo para pintar el bloque
-mColorPosSprite MACRO codigo_sprite
+mAuxColorPosSprite MACRO codigo_sprite
 
   LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA, L_OBJETIVO, L_COLOR, L_FIN
 
@@ -166,7 +166,7 @@ mPintarSprite MACRO pos, codigo_sprite
     L_COLUMNA:
       PUSH BX ; Se almacena temporalmente el indice de la columna
       PUSH AX ; Se almacena temporalmente el indice de la fila
-      mColorPosSprite codigo_sprite ; Se determina el color del pixel a pintar
+      mAuxColorPosSprite codigo_sprite ; Se determina el color del pixel a pintar
 
       ADD AX, aux_pos_x_sprite ; Se realiza el corrimiento de pintado por parte de la columna
       ADD BX, aux_pos_y_sprite ; Se realiza el corrimiento de pintado por parte de la fila
@@ -282,12 +282,12 @@ ENDM
                   db   00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
 
   ; Codigo 01H
-  sprite_pared    db   1AH, 1AH, 1AH, 1AH, 12H, 1FH, 1AH, 1AH
-                  db   1AH, 1AH, 1AH, 1AH, 12H, 1FH, 1AH, 1AH
+  sprite_pared    db   2AH, 2AH, 2AH, 2AH, 12H, 1FH, 2AH, 2AH
+                  db   2AH, 2AH, 2AH, 2AH, 12H, 1FH, 2AH, 2AH
                   db   12H, 12H, 12H, 12H, 12H, 12H, 12H, 12H
                   db   12H, 1FH, 1FH, 1FH, 1FH, 1FH, 1FH, 1FH
-                  db   12H, 1FH, 1AH, 1AH, 1AH, 1AH, 1AH, 1AH
-                  db   12H, 1FH, 1AH, 1AH, 1AH, 1AH, 1AH, 1AH
+                  db   12H, 1FH, 2AH, 2AH, 2AH, 2AH, 2AH, 2AH
+                  db   12H, 1FH, 2AH, 2AH, 2AH, 2AH, 2AH, 2AH
                   db   12H, 12H, 12H, 12H, 12H, 12H, 12H, 12H
                   db   1FH, 1FH, 1FH, 1FH, 12H, 1FH, 1FH, 1FH
 
