@@ -17,7 +17,7 @@ ENDM
 ; codigo_sprite: Es el codigo de sprite que se esta escogiendo para pintar el bloque
 mAuxColorPosSprite MACRO codigo_sprite
 
-  LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA, L_OBJETIVO, L_COLOR, L_FLECHA, L_FIN
+  LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA_OBJETIVO, L_OBJETIVO, L_COLOR, L_FLECHA, L_CAJA_SIN_OBJETIVO, L_FIN
 
   PUSH AX
   PUSH BX
@@ -32,13 +32,16 @@ mAuxColorPosSprite MACRO codigo_sprite
   JE L_JUGADOR
 
   CMP codigo_sprite, 04H
-  JE L_CAJA
+  JE L_CAJA_OBJETIVO
 
   CMP codigo_sprite, 05H
   JE L_OBJETIVO
 
   CMP codigo_sprite, 06H
   JE L_FLECHA
+
+  CMP codigo_sprite, 07H
+  JE L_CAJA_SIN_OBJETIVO
 
   L_VACIO:
     MOV SI, offset sprite_vacio
@@ -52,8 +55,8 @@ mAuxColorPosSprite MACRO codigo_sprite
     MOV SI, offset sprite_suelo
   JMP L_COLOR
 
-  L_CAJA:
-    MOV SI, offset sprite_caja
+  L_CAJA_OBJETIVO:
+    MOV SI, offset sprite_caja_objetivo
   JMP L_COLOR
 
   L_JUGADOR:
@@ -66,6 +69,10 @@ mAuxColorPosSprite MACRO codigo_sprite
 
   L_FLECHA:
     MOV SI, offset sprite_flecha
+  JMP L_COLOR
+
+  L_CAJA_SIN_OBJETIVO:
+    MOV SI, offset sprite_caja_sin_objetivo
   JMP L_COLOR
 
   L_COLOR:
@@ -300,7 +307,7 @@ ENDM
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
-          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 07H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
@@ -358,14 +365,14 @@ ENDM
                   db   48H, 48H, 06H, 48H, 48H, 06H, 48H, 48H
 
   ; Codigo 04H
-  sprite_caja     db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
-                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
-                  db   0B9H, 006H, 006H, 01BH, 018H, 006H, 006H, 0B9H
-                  db   0B9H, 0B9H, 0B9H, 01BH, 018H, 0B9H, 0B9H, 0B9H
-                  db   0B9H, 006H, 006H, 018H, 018H, 006H, 006H, 0B9H
-                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
-                  db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
-                  db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
+  sprite_caja_objetivo  db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
+                        db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                        db   0B9H, 006H, 006H, 01BH, 018H, 006H, 006H, 0B9H
+                        db   0B9H, 0B9H, 0B9H, 01BH, 018H, 0B9H, 0B9H, 0B9H
+                        db   0B9H, 006H, 006H, 018H, 018H, 006H, 006H, 0B9H
+                        db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                        db   0B9H, 006H, 006H, 006H, 006H, 006H, 006H, 0B9H
+                        db   0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H, 0B9H
 
   ; Codigo 05H
   sprite_objetivo db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
@@ -386,9 +393,20 @@ ENDM
                 db   00H, 00H, 00H, 0CH, 0CH, 00H, 00H, 00H
                 db   00H, 00H, 00H, 0CH, 00H, 00H, 00H, 00H
 
+  ; Codigo 07H
+  sprite_caja_sin_objetivo  db   0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H
+                            db   0C7H, 07EH, 07EH, 07EH, 07EH, 07EH, 07EH, 0C7H
+                            db   0C7H, 07EH, 07EH, 01BH, 018H, 07EH, 07EH, 0C7H
+                            db   0C7H, 0C7H, 0C7H, 01BH, 018H, 0C7H, 0C7H, 0C7H
+                            db   0C7H, 07EH, 07EH, 018H, 018H, 07EH, 07EH, 0C7H
+                            db   0C7H, 07EH, 07EH, 07EH, 07EH, 07EH, 07EH, 0C7H
+                            db   0C7H, 07EH, 07EH, 07EH, 07EH, 07EH, 07EH, 0C7H
+                            db   0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H, 0C7H
+
   ; Juego
   nivel_juego db 00H ; Representa el nivel del juego actual
   posicion_jugador dw 007AH ; Representa la posicion actual del jugador de forma lineal (1000 posiciones)
+  aux_pos_objeto_reubicado dw 0000H ; Auxilia al momento de mover un objeto de un punto a otro dentro del mapa
 
   ; Controles
   control_arriba    db  48H
@@ -663,6 +681,7 @@ ENDM
 		JE @@mov_izquierda
 		CMP AH, [control_derecha]
 		JE @@mov_derecha
+    JMP @@fin_entrada_juego
 
     @@mov_arriba:
       SUB posicion_jugador, 28H
