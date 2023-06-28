@@ -308,6 +308,57 @@ mReubicarSpriteEnLienzo MACRO pos_actual, cod_sprite
 
 ENDM
 
+; D: Se encarga de clasificar el tipo de movimiento que se va a a realizar para la interracion del jugador con los objetos
+; pos_actual: Posicion actual del jugador
+; REGISTRO AH: Indica si es una suma o resta (00H = Suma ; 01H = Resta)
+; REGISTRO AL: Es el valor a sumar o restar con respecto a la posicion actual
+mTipoMovimientoLienzo MACRO pos_actual
+
+  LOCAL L_CLASIFICAR, L_PARED, L_SUELO, L_SALIDA
+
+  ; Se almacenan los registros AX
+  PUSH AX
+
+  ; Se inicializa la variable que nos indica el tipo de movimiento
+  MOV tipo_movimiento, 00H
+
+  ; Se determina el tipo de operacion a realizar
+  CMP AH, 01H
+  MOV AH, 00
+  MOV BX, pos_actual
+  JE L_RESTA
+
+  L_SUMA:
+    ADD BX, AX
+    JMP L_CLASIFICAR
+
+  L_RESTA:
+    SUB BX, AX
+
+  L_CLASIFICAR:
+    MOV SI, offset lienzo
+    ADD SI, BX
+    MOV AX, 0000H
+    MOV AL, [SI]
+    CMP AL, 01H ; Se verifica que sea el codigo de la pared
+    JE L_PARED
+    CMP AL, 02H ; Se verifica que sea el codigo del suelo
+    JE L_SUELO
+    JMP L_SALIDA
+
+  L_PARED:
+    MOV tipo_movimiento, 01H
+    JMP L_SALIDA
+
+  L_SUELO:
+    MOV tipo_movimiento, 02H
+    JMP L_SALIDA
+
+  L_SALIDA:
+    POP AX ; Se obtienen los registros AX almacenados al principo de la MACRO
+
+ENDM
+
 .MODEL SMALL
 .RADIX 16
 .STACK
@@ -454,7 +505,7 @@ ENDM
   ; Juego
   nivel_juego db 00H ; Representa el nivel del juego actual
   posicion_jugador dw 007AH ; Representa la posicion actual del jugador de forma lineal (1000 posiciones)
-  aux_pos_objeto_reubicado dw 0000H ; Auxilia al momento de mover un objeto de un punto a otro dentro del mapa
+  tipo_movimiento db 00H ; Auxilia para determinar el tipo de movimiento que realizara el jugador al momento de presionar algun boton
 
   ; Controles
   control_arriba    db  48H
@@ -606,8 +657,7 @@ ENDM
   JUEGO PROC
     ; Se pinta la informacion que contiene el lienzo
     mPintarLienzo
-    ; ; Se limpia la posicion actual de la flecha
-
+    ; Se recibe la entrada por medio del teclado
     @@interaccion:
       call MOVIMIENTO_JUGADOR
     JMP @@interaccion
@@ -726,38 +776,46 @@ ENDM
     @@mov_arriba:
       MOV AH, 01H
       MOV AL, 28H
-      JMP @@mov_suelo
+      JMP @@movimiento
 
     @@mov_abajo:
       MOV AH, 00H
       MOV AL, 28H
-      JMP @@mov_suelo
+      JMP @@movimiento
 
     @@mov_izquierda:
       MOV AH, 01H
       MOV AL, 01H
-      JMP @@mov_suelo
+      JMP @@movimiento
 
     @@mov_derecha:
       MOV AH, 00H
       MOV AL, 01H
-      JMP @@mov_suelo
+      JMP @@movimiento
 
-    @@mov_suelo:
-      mReubicarSpriteEnLienzo posicion_jugador, 03H
+    @@movimiento:
+      mTipoMovimientoLienzo posicion_jugador
+      CMP tipo_movimiento, 01H
+      JE @@mov_pared
+      CMP tipo_movimiento, 02H
+      JE @@mov_suelo
       JMP @@fin_entrada_juego
 
     @@mov_pared:
       JMP @@fin_entrada_juego
 
-    @@objetivo:
+    @@mov_suelo:
+      mReubicarSpriteEnLienzo posicion_jugador, 03H
       JMP @@fin_entrada_juego
 
-    @@mov_caja_sin_obj:
-      JMP @@fin_entrada_juego
+    ; @@objetivo:
+    ;  JMP @@fin_entrada_juego
 
-    @@mov_caja_con_obj:
-      JMP @@fin_entrada_juego
+    ; @@mov_caja_sin_obj:
+    ;   JMP @@fin_entrada_juego
+
+    ; @@mov_caja_con_obj:
+    ;   JMP @@fin_entrada_juego
 
     @@fin_entrada_juego:
   RET
