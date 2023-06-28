@@ -217,9 +217,9 @@ mPintarLienzo MACRO
     PUSH aux_iteracion_sprite ; Se almacena el indice del primer ciclo para la obtencion del color del 'lienzo'
     PUSH DI
 
-    MOV AL, [DI] ; Se obtiene el color del lienzo
-    MOV aux_codigo_sprite, AL ; Se setea el color en la variable auxiliar que maneja el color a pintar
-    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+    MOV AL, [DI] ; Se obtiene el codigo del sprite que esta en el lienzo
+    MOV aux_codigo_sprite, AL ; Se setea el codigo en la variable auxiliar que maneja el codigo del sprite
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el sprite
 
     POP DI
     INC DI
@@ -275,12 +275,17 @@ ENDM
   ; ****** Utilizados en ejecucion *******
   ; **************************************
 
+  ; Informacion
+  msg_nombre db "Nombre: Douglas Soch", "$"
+  msg_carne db "Carne: 201807032", "$"
+  msg_continuar db "Pulse cualquier boton para continuar", "$"
+
   ; Menu principal
-  msg_iniciar_juego db "INICIAR JUEGO", '$'
-  msg_cargar_nivel db "CARGAR NIVEL", '$'
-  msg_configuracion db "CONFIGURACION", '$'
-  msg_puntajes_altos db "PUNTAJES ALTOS", '$'
-  msg_salir db "SALIR", '$'
+  msg_iniciar_juego db "INICIAR JUEGO", "$"
+  msg_cargar_nivel db "CARGAR NIVEL", "$"
+  msg_configuracion db "CONFIGURACION", "$"
+  msg_puntajes_altos db "PUNTAJES ALTOS", "$"
+  msg_salir db "SALIR", "$"
   posicion_flecha dw 0000
 
   ; Lienzo
@@ -397,13 +402,65 @@ ENDM
     INT 10
   MODO_VIDEO ENDP
 
+  PANTALLA_INICIAL PROC
+
+    mLimpiarPantalla
+
+    ; Posicionando cursor para dibujar el nombre
+    MOV DL, 0AH
+		MOV DH, 09H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_nombre
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar el carnet
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_carne
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar el boton para presionar
+    MOV DL, 02H
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_continuar
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Se espera hasta que el usuario oprima algun boton del teclado
+    MOV AH, 00
+		INT 16
+
+  PANTALLA_INICIAL ENDP
+
   MENU_PRINCIPAL PROC
 
     mLimpiarPantalla
 
     ; Posicionando cursor para dibujar la opcion 'INICIAR JUEGO'
     MOV DL, 0CH
-		MOV DH, 05H
+		MOV DH, 07H
 		MOV BH, 00H
 		MOV AH, 02H
 		INT 10H
@@ -492,17 +549,17 @@ ENDM
 
   ENTRADA_MENU_PRINCIPAL PROC
 
-    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 210 + 80n
+    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 290 + 80n
     MOV AX, 50H ; 80
     MOV BX, posicion_flecha ; n
     MUL BX ; 80n
-    ADD AX, 00D2H ; 210 + 80n
+    ADD AX, 122H ; 290 + 80n
     MOV aux_iteracion_sprite, AX
 
     MOV aux_codigo_sprite, 06H ; Se setea el sprite a utilizar
     mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
 
-    ; Se comprueba si hay una tecla disponible para leer sin bloquear la ejecucion del programa
+    ; Se espera hasta que el usuario oprima algun boton del teclado
     MOV AH, 00
 		INT 16
 
@@ -607,7 +664,10 @@ ENDM
 
   SALIR PROC
     mLimpiarPantalla
-    .EXIT
   SALIR ENDP
+
+  FIN PROC
+    .EXIT
+  FIN ENDP
 
 END
