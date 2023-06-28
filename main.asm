@@ -3,6 +3,10 @@
 ; Params = Parametros
 ; *********************
 
+; RECORDAR: Si modificamos la direccion del segmento de datos, ya no podremos obtener
+; nuestros array de bytes definidos abajo de .DATA, por lo tanto hay guardar la direccion del
+; segmento de datos original
+
 ; D: Pausa la ejecucion del programa hasta que el usuario presione ENTER
 mPausaE MACRO
   MOV AH, 0AH
@@ -13,7 +17,7 @@ ENDM
 ; codigo_sprite: Es el codigo de sprite que se esta escogiendo para pintar el bloque
 mAuxColorPosSprite MACRO codigo_sprite
 
-  LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA, L_OBJETIVO, L_COLOR, L_FIN
+  LOCAL L_VACIO, L_PARED, L_SUELO, L_JUGADOR, L_CAJA, L_OBJETIVO, L_COLOR, L_FLECHA, L_FIN
 
   PUSH AX
   PUSH BX
@@ -32,6 +36,9 @@ mAuxColorPosSprite MACRO codigo_sprite
 
   CMP codigo_sprite, 05H
   JE L_OBJETIVO
+
+  CMP codigo_sprite, 06H
+  JE L_FLECHA
 
   L_VACIO:
     MOV SI, offset sprite_vacio
@@ -55,6 +62,10 @@ mAuxColorPosSprite MACRO codigo_sprite
 
   L_OBJETIVO:
     MOV SI, offset sprite_objetivo
+  JMP L_COLOR
+
+  L_FLECHA:
+    MOV SI, offset sprite_flecha
   JMP L_COLOR
 
   L_COLOR:
@@ -220,6 +231,28 @@ mPintarLienzo MACRO
 
 ENDM
 
+; D: Se encarga de pintar la pantalla con el sprite vacio
+mLimpiarPantalla MACRO
+
+  LOCAL L_CICLO
+
+  ; Inicializando variables a utilizar
+  MOV aux_iteracion_sprite, 0000H
+  MOV aux_codigo_sprite, 00H
+
+  ; Realizara el ciclo durante las 1000 posiciones (40 x 25)
+  L_CICLO:
+
+    PUSH aux_iteracion_sprite ; Se almacena el indice del primer ciclo para la obtencion del color del 'lienzo'
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+    POP aux_iteracion_sprite ; Se recupera el indice del primer ciclo
+
+  INC aux_iteracion_sprite
+  CMP aux_iteracion_sprite, 03E8H ; Se realizara el ciclo hasta la iteracion 1000 (03E8H) debido a que 40 x 25 = 1000
+  JNZ L_CICLO
+
+ENDM
+
 .MODEL SMALL
 .RADIX 16
 .STACK
@@ -241,6 +274,14 @@ ENDM
   ; **************************************
   ; ****** Utilizados en ejecucion *******
   ; **************************************
+
+  ; Menu principal
+  msg_iniciar_juego db "INICIAR JUEGO", '$'
+  msg_cargar_nivel db "CARGAR NIVEL", '$'
+  msg_configuracion db "CONFIGURACION", '$'
+  msg_puntajes_altos db "PUNTAJES ALTOS", '$'
+  msg_salir db "SALIR", '$'
+  posicion_flecha dw 0000
 
   ; Lienzo
   ; lienzo db 03E8H dup(06H) ; Dimension 40 x 25 = 1000 posiciones
@@ -330,25 +371,243 @@ ENDM
                   db   48H, 41H, 41H, 41H, 41H, 41H, 41H, 48H
                   db   48H, 48H, 41H, 41H, 41H, 41H, 48H, 48H
                   db   48H, 48H, 48H, 48H, 48H, 48H, 48H, 48H
+  ; Codigo 06H
+  sprite_flecha db   00H, 00H, 00H, 0CH, 00H, 00H, 00H, 00H
+                db   00H, 00H, 00H, 0CH, 0CH, 00H, 00H, 00H
+                db   0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 00H, 00H
+                db   0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 00H
+                db   0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 00H
+                db   0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 00H, 00H
+                db   00H, 00H, 00H, 0CH, 0CH, 00H, 00H, 00H
+                db   00H, 00H, 00H, 0CH, 00H, 00H, 00H, 00H
+  ; Controles
+  control_arriba    db  48H
+  control_abajo     db  50H
+  control_izquierda db  4BH
+  control_derecha   db  4DH
+  control_salida    db  3CH
 
 .CODE
 .STARTUP
 
-  ; RECORDAR: Si modificamos la direccion del segmento de datos, ya no podremos obtener
-  ; nuestros array de bytes definidos abajo de .DATA, por lo tanto hay guardar la direccion del
-  ; segmento de datos original
   MODO_VIDEO PROC
-
     ; Se cambia el modo de video
     MOV AH, 00
     MOV AL, 13
     INT 10
-
-    ; Se pinta el sprite
-    mPintarLienzo
-    mPausaE
-
   MODO_VIDEO ENDP
 
-.EXIT
+  MENU_PRINCIPAL PROC
+
+    mLimpiarPantalla
+
+    ; Posicionando cursor para dibujar la opcion 'INICIAR JUEGO'
+    MOV DL, 0CH
+		MOV DH, 05H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto de inicio de juego
+    PUSH DX
+    MOV DX, offset msg_iniciar_juego
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar la opcion 'CARGAR NIVEL'
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto de carga de nivel
+    PUSH DX
+    MOV DX, offset msg_cargar_nivel
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar la opcion 'CONFIGURACION'
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto de configuracion
+    PUSH DX
+    MOV DX, offset msg_configuracion
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar la opcion 'PUNTAJES ALTOS'
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto de configuracion
+    PUSH DX
+    MOV DX, offset msg_puntajes_altos
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar la opcion 'SALIR'
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto de salida
+    PUSH DX
+    MOV DX, offset msg_salir
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    JMP ENTRADA_MENU_PRINCIPAL
+
+  MENU_PRINCIPAL ENDP
+
+  JUEGO PROC
+    ; Se pinta la informacion que contiene el lienzo
+    mPintarLienzo
+    ; call MOVIMIENTO_JUGADOR
+  JUEGO ENDP
+
+  CARGAR_NIVEL PROC
+  CARGAR_NIVEL ENDP
+
+  CONFIGURACION PROC
+  CONFIGURACION ENDP
+
+  PUNTAJES_ALTOS PROC
+  PUNTAJES_ALTOS ENDP
+
+  ENTRADA_MENU_PRINCIPAL PROC
+
+    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 210 + 80n
+    MOV AX, 50H ; 80
+    MOV BX, posicion_flecha ; n
+    MUL BX ; 80n
+    ADD AX, 00D2H ; 210 + 80n
+    MOV aux_iteracion_sprite, AX
+
+    MOV aux_codigo_sprite, 06H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+
+    ; Se comprueba si hay una tecla disponible para leer sin bloquear la ejecucion del programa
+    MOV AH, 00
+		INT 16
+
+    ; Presiono la tecla de flecha hacia arriba
+    CMP AH, 48H
+		JE @@hacia_arriba
+
+    ; Presiono la tecla de flecha hacia abajo
+		CMP AH, 50H
+		JE @@hacia_abajo
+
+    ; Presiono la tecla F1
+		CMP AH, 3BH
+		JE @@opcion_seleccionada
+    JMP @@repetir
+
+    @@hacia_arriba:
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 04H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha
+      DEC AX
+      CMP AX, 00H
+      JL @@repetir
+
+      ; Se decrementa la posicion de la flecha
+      DEC posicion_flecha
+    JMP @@repetir
+
+    @@hacia_abajo:
+
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 04H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha
+      INC AX
+      CMP AX, 04H
+      JG @@repetir
+
+      ; Se incrementa la posicion de la flecha
+      INC posicion_flecha
+    JMP @@repetir
+
+    @@opcion_seleccionada:
+      CMP posicion_flecha, 00H
+      JE JUEGO
+      CMP posicion_flecha, 01H
+      JE CARGAR_NIVEL
+      CMP posicion_flecha, 02H
+      JE CONFIGURACION
+      CMP posicion_flecha, 03H
+      JE PUNTAJES_ALTOS
+      CMP posicion_flecha, 04H
+      JE SALIR
+
+    @@repetir:
+		  JMP ENTRADA_MENU_PRINCIPAL
+
+  ENTRADA_MENU_PRINCIPAL ENDP
+
+  MOVIMIENTO_JUGADOR:
+
+    ; Se comprueba si hay una tecla disponible para leer sin bloquear la ejecucion del programa
+    MOV AH, 01
+		INT 16
+		JZ @@fin_entrada_juego ; No se leyo nada en el buffer de entrada
+
+    ; Espera hasta que se presione una tecla; la tecla presionada se queda en AH
+    MOV AH, 00
+		INT 16
+
+    ; Se verifica el boton presionado
+		CMP AH, [control_arriba]
+		JE @@mov_arriba
+		CMP AH, [control_abajo]
+		JE @@mov_abajo
+		CMP AH, [control_izquierda]
+		JE @@mov_izquierda
+		CMP AH, [control_derecha]
+		JE @@mov_derecha
+		CMP AH, [control_salida]
+    JE @@fin_entrada_juego
+
+    @@mov_arriba:
+
+
+    @@mov_abajo:
+
+
+    @@mov_izquierda:
+
+
+    @@mov_derecha:
+
+
+    @@fin_entrada_juego:
+  RET
+
+  SALIR PROC
+    mLimpiarPantalla
+    .EXIT
+  SALIR ENDP
+
 END
