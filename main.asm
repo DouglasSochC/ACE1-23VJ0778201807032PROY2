@@ -293,7 +293,7 @@ ENDM
   lienzo  db  00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
           db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
           db  01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H, 01H
-          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 03H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
@@ -305,7 +305,7 @@ ENDM
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 05H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
-          db  01H, 01H, 02H, 02H, 02H, 03H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
+          db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
           db  01H, 01H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 02H, 01H, 01H
@@ -385,6 +385,11 @@ ENDM
                 db   0CH, 0CH, 0CH, 0CH, 0CH, 0CH, 00H, 00H
                 db   00H, 00H, 00H, 0CH, 0CH, 00H, 00H, 00H
                 db   00H, 00H, 00H, 0CH, 00H, 00H, 00H, 00H
+
+  ; Juego
+  nivel_juego db 00H ; Representa el nivel del juego actual
+  posicion_jugador dw 007AH ; Representa la posicion actual del jugador de forma lineal (1000 posiciones)
+
   ; Controles
   control_arriba    db  48H
   control_abajo     db  50H
@@ -535,7 +540,11 @@ ENDM
   JUEGO PROC
     ; Se pinta la informacion que contiene el lienzo
     mPintarLienzo
-    ; call MOVIMIENTO_JUGADOR
+    ; ; Se limpia la posicion actual de la flecha
+
+    @@interaccion:
+      call MOVIMIENTO_JUGADOR
+    JMP @@interaccion
   JUEGO ENDP
 
   CARGAR_NIVEL PROC
@@ -636,6 +645,16 @@ ENDM
 		INT 16
 
     ; Se verifica el boton presionado
+    CMP AH, [control_salida]
+    JE MENU_PRINCIPAL
+
+    ; Se limpia la posicion anterior donde estaba el jugador
+    PUSH AX
+    MOV aux_codigo_sprite, 02 ; Se setea el sprite a utilizar
+    mPintarSprite posicion_jugador, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+    POP AX
+
+    ; Se verifica el boton presionado
 		CMP AH, [control_arriba]
 		JE @@mov_arriba
 		CMP AH, [control_abajo]
@@ -644,20 +663,28 @@ ENDM
 		JE @@mov_izquierda
 		CMP AH, [control_derecha]
 		JE @@mov_derecha
-		CMP AH, [control_salida]
-    JE @@fin_entrada_juego
 
     @@mov_arriba:
-
+      SUB posicion_jugador, 28H
+      JMP @@actualizar_juego
 
     @@mov_abajo:
-
+      ADD posicion_jugador, 28H
+      JMP @@actualizar_juego
 
     @@mov_izquierda:
-
+      SUB posicion_jugador, 01H
+      JMP @@actualizar_juego
 
     @@mov_derecha:
+      ADD posicion_jugador, 01H
+      JMP @@actualizar_juego
 
+    @@actualizar_juego:
+
+      ; Se redibuja a el jugador en la posicion nueva
+      MOV aux_codigo_sprite, 03 ; Se setea el sprite a utilizar
+      mPintarSprite posicion_jugador, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
 
     @@fin_entrada_juego:
   RET
