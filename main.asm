@@ -260,7 +260,7 @@ mLimpiarPantalla MACRO
 
 ENDM
 
-; D: Se encarga de setear un sprite de una posicion a otra dentro del lienzo
+; D: Se encarga de setear un sprite de una posicion a otra dentro del lienzo. Este actualiza el valor que posee el parametro 'pos_actual' a la nueva posicion
 ; pos_actual: Posicion actual del sprite
 ; cod_sprite: Es el codigo del sprite que se va a reubicar
 ; REGISTRO AH: Indica si es una suma o resta (00H = Suma ; 01H = Resta)
@@ -273,6 +273,10 @@ mReubicarSpriteEnLienzo MACRO pos_actual, cod_sprite
   PUSH AX
   MOV aux_codigo_sprite, 02H ; Se setea el sprite a utilizar
   mPintarSprite pos_actual, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+  MOV SI, offset lienzo
+  ADD SI, pos_actual
+  MOV AL, aux_codigo_sprite
+  MOV [SI], AL
   POP AX
 
   ; Se setea la posicion actual al sprite del suelo
@@ -308,19 +312,35 @@ mReubicarSpriteEnLienzo MACRO pos_actual, cod_sprite
 
 ENDM
 
+; D: Se encarga de setear un sprite en una posicion especifica.
+; pos_actual: Posicion actual del sprite
+; cod_sprite: Es el codigo del sprite que se va a reubicar
+mPintarSpriteEnLienzo MACRO pos_actual, cod_sprite
+
+  PUSH AX
+  MOV cod_sprite, 05H ; Se setea el sprite a utilizar
+  mPintarSprite pos_actual, cod_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+  MOV SI, offset lienzo
+  ADD SI, pos_actual
+  MOV AL, cod_sprite
+  MOV [SI], AL
+  POP AX
+
+ENDM
+
 ; D: Se encarga de clasificar el tipo de movimiento que se va a a realizar para la interracion del jugador con los objetos
 ; pos_actual: Posicion actual del jugador
 ; REGISTRO AH: Indica si es una suma o resta (00H = Suma ; 01H = Resta)
 ; REGISTRO AL: Es el valor a sumar o restar con respecto a la posicion actual
 mTipoMovimientoLienzo MACRO pos_actual
 
-  LOCAL L_CLASIFICAR, L_PARED, L_SUELO, L_SALIDA
+  LOCAL L_CLASIFICAR, L_PARED, L_SUELO, L_OBJETIVO, L_SALIDA
 
   ; Se almacenan los registros AX
   PUSH AX
 
   ; Se inicializa la variable que nos indica el tipo de movimiento
-  MOV tipo_movimiento, 00H
+  MOV aux_tipo_movimiento, 00H
 
   ; Se determina el tipo de operacion a realizar
   CMP AH, 01H
@@ -340,18 +360,7 @@ mTipoMovimientoLienzo MACRO pos_actual
     ADD SI, BX
     MOV AX, 0000H
     MOV AL, [SI]
-    CMP AL, 01H ; Se verifica que sea el codigo de la pared
-    JE L_PARED
-    CMP AL, 02H ; Se verifica que sea el codigo del suelo
-    JE L_SUELO
-    JMP L_SALIDA
-
-  L_PARED:
-    MOV tipo_movimiento, 01H
-    JMP L_SALIDA
-
-  L_SUELO:
-    MOV tipo_movimiento, 02H
+    MOV aux_tipo_movimiento, AL
     JMP L_SALIDA
 
   L_SALIDA:
@@ -505,7 +514,9 @@ ENDM
   ; Juego
   nivel_juego db 00H ; Representa el nivel del juego actual
   posicion_jugador dw 007AH ; Representa la posicion actual del jugador de forma lineal (1000 posiciones)
-  tipo_movimiento db 00H ; Auxilia para determinar el tipo de movimiento que realizara el jugador al momento de presionar algun boton
+  aux_pos_jugador_anterior dw 0000H ; Almacena la posicion que tenia anteriormente el jugador antes de realizar un movimiento
+  aux_tipo_movimiento db 00H ; Almacena el tipo de movimiento que realizara el jugador al momento de presionar algun boton
+  aux_cantidad_objetivos db 00H ; Almacena la cantidad de objetivos en el cual el usuario a estado encima
 
   ; Controles
   control_arriba    db  48H
@@ -795,21 +806,48 @@ ENDM
 
     @@movimiento:
       mTipoMovimientoLienzo posicion_jugador
-      CMP tipo_movimiento, 01H
+      CMP aux_tipo_movimiento, 01H
       JE @@mov_pared
-      CMP tipo_movimiento, 02H
+      CMP aux_tipo_movimiento, 02H
       JE @@mov_suelo
+      CMP aux_tipo_movimiento, 05H
+      JE @@objetivo
       JMP @@fin_entrada_juego
 
     @@mov_pared:
       JMP @@fin_entrada_juego
 
     @@mov_suelo:
+      MOV BX, posicion_jugador
+      MOV aux_pos_jugador_anterior, BX
       mReubicarSpriteEnLienzo posicion_jugador, 03H
+
+      ; Revisar si en la posicion donde estaba anteriormente existio un objetivo
+      CMP aux_cantidad_objetivos, 00H
+      JE @@fin_entrada_juego
+
+      ; Se repinta el objetivo en el caso que ya existia una anteriormente
+      MOV aux_codigo_sprite, 05H
+      mPintarSpriteEnLienzo aux_pos_jugador_anterior, aux_codigo_sprite
+      DEC aux_cantidad_objetivos
       JMP @@fin_entrada_juego
 
-    ; @@objetivo:
-    ;  JMP @@fin_entrada_juego
+    @@objetivo:
+      MOV BX, posicion_jugador
+      MOV aux_pos_jugador_anterior, BX
+
+      mReubicarSpriteEnLienzo posicion_jugador, 03H
+      INC aux_cantidad_objetivos
+
+      ; Revisar si en la posicion donde estaba anteriormente existio un objetivo
+      CMP aux_cantidad_objetivos, 01H
+      JLE @@fin_entrada_juego
+
+      ; Se repinta el objetivo en el caso que ya existia una anteriormente
+      MOV aux_codigo_sprite, 05H
+      mPintarSpriteEnLienzo aux_pos_jugador_anterior, aux_codigo_sprite
+      DEC aux_cantidad_objetivos
+      JMP @@fin_entrada_juego
 
     ; @@mov_caja_sin_obj:
     ;   JMP @@fin_entrada_juego
