@@ -260,6 +260,54 @@ mLimpiarPantalla MACRO
 
 ENDM
 
+; D: Se encarga de setear un sprite de una posicion a otra dentro del lienzo
+; pos_actual: Posicion actual del sprite
+; cod_sprite: Es el codigo del sprite que se va a reubicar
+; REGISTRO AH: Indica si es una suma o resta (00H = Suma ; 01H = Resta)
+; REGISTRO AL: Es el valor a sumar o restar con respecto a la posicion actual
+mReubicarSpriteEnLienzo MACRO pos_actual, cod_sprite
+
+  LOCAL L_SUMA, L_RESTA, L_REUBICAR, L_SALIDA
+
+  ; Se realiza la limpieza del sprite en los graficos
+  PUSH AX
+  MOV aux_codigo_sprite, 02H ; Se setea el sprite a utilizar
+  mPintarSprite pos_actual, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+  POP AX
+
+  ; Se setea la posicion actual al sprite del suelo
+  PUSH AX
+  MOV SI, offset lienzo
+  ADD SI, pos_actual
+  MOV AH, 02H
+  MOV [SI], AH
+  POP AX
+
+  ; Se determina el tipo de operacion a realizar
+  CMP AH, 01H
+  MOV AH, 00
+  JE L_RESTA
+
+  L_SUMA:
+    ADD pos_actual, AX
+    JMP L_REUBICAR
+
+  L_RESTA:
+    SUB pos_actual, AX
+
+  L_REUBICAR:
+    MOV SI, offset lienzo
+    ADD SI, pos_actual
+    MOV AL, cod_sprite
+    MOV [SI], AL
+
+  L_SALIDA:
+    ; Se redibuja el sprite en los graficos segun la posicion nueva
+    MOV aux_codigo_sprite, cod_sprite ; Se setea el sprite a utilizar
+    mPintarSprite pos_actual, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+ENDM
+
 .MODEL SMALL
 .RADIX 16
 .STACK
@@ -663,16 +711,6 @@ ENDM
 		INT 16
 
     ; Se verifica el boton presionado
-    CMP AH, [control_salida]
-    JE MENU_PRINCIPAL
-
-    ; Se limpia la posicion anterior donde estaba el jugador
-    PUSH AX
-    MOV aux_codigo_sprite, 02 ; Se setea el sprite a utilizar
-    mPintarSprite posicion_jugador, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
-    POP AX
-
-    ; Se verifica el boton presionado
 		CMP AH, [control_arriba]
 		JE @@mov_arriba
 		CMP AH, [control_abajo]
@@ -682,28 +720,44 @@ ENDM
 		CMP AH, [control_derecha]
 		JE @@mov_derecha
     JMP @@fin_entrada_juego
+    CMP AH, [control_salida]
+    JE MENU_PRINCIPAL
 
     @@mov_arriba:
-      SUB posicion_jugador, 28H
-      JMP @@actualizar_juego
+      MOV AH, 01H
+      MOV AL, 28H
+      JMP @@mov_suelo
 
     @@mov_abajo:
-      ADD posicion_jugador, 28H
-      JMP @@actualizar_juego
+      MOV AH, 00H
+      MOV AL, 28H
+      JMP @@mov_suelo
 
     @@mov_izquierda:
-      SUB posicion_jugador, 01H
-      JMP @@actualizar_juego
+      MOV AH, 01H
+      MOV AL, 01H
+      JMP @@mov_suelo
 
     @@mov_derecha:
-      ADD posicion_jugador, 01H
-      JMP @@actualizar_juego
+      MOV AH, 00H
+      MOV AL, 01H
+      JMP @@mov_suelo
 
-    @@actualizar_juego:
+    @@mov_suelo:
+      mReubicarSpriteEnLienzo posicion_jugador, 03H
+      JMP @@fin_entrada_juego
 
-      ; Se redibuja a el jugador en la posicion nueva
-      MOV aux_codigo_sprite, 03 ; Se setea el sprite a utilizar
-      mPintarSprite posicion_jugador, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+    @@mov_pared:
+      JMP @@fin_entrada_juego
+
+    @@objetivo:
+      JMP @@fin_entrada_juego
+
+    @@mov_caja_sin_obj:
+      JMP @@fin_entrada_juego
+
+    @@mov_caja_con_obj:
+      JMP @@fin_entrada_juego
 
     @@fin_entrada_juego:
   RET
