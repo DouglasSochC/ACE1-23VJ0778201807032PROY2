@@ -402,6 +402,7 @@ ENDM
   msg_puntajes_altos db "PUNTAJES ALTOS", "$"
   msg_salir db "SALIR", "$"
   posicion_flecha dw 0000
+  posicion_flecha_configuracion dw 0000H
 
   ; Lienzo
   ; lienzo db 03E8H dup(06H) ; Dimension 40 x 25 = 1000 posiciones
@@ -517,6 +518,10 @@ ENDM
   aux_pos_jugador_anterior dw 0000H ; Almacena la posicion que tenia anteriormente el jugador antes de realizar un movimiento
   aux_tipo_movimiento db 00H ; Almacena el tipo de movimiento que realizara el jugador al momento de presionar algun boton
   aux_cantidad_objetivos db 00H ; Almacena la cantidad de objetivos en el cual el usuario a estado encima
+  aux_caracter db 00H ; Representa el caracter que se esta leyendo en el archivo
+  aux_objeto db 08H dup(0) ; Variable auxiliar que almacena la entidad leeida en el archivo de un nivel aqui se almacenan unicamente 8 caracteres
+  aux_x db 03H dup(0) ; Variable auxiliar que almacena la coordenada x de la entidad
+  aux_y db 03H dup(0) ; Variable auxiliar que almacena la coordenada y de la entidad
 
   ; Controles
   control_arriba    db  48H
@@ -524,6 +529,27 @@ ENDM
   control_izquierda db  4BH
   control_derecha   db  4DH
   control_salida    db  3CH
+  msg_caracter_arriba db 38H, "$"
+  msg_caracter_abajo db 32H, "$"
+  msg_caracter_izquierda db 34H, "$"
+  msg_caracter_derecha db 36H, "$"
+  aux_solicitud_control db 00H ; Variable auxiliar que nos ayuda a determinar cual es el boton que se esta modificando
+
+  ; Configuracion
+  msg_encabezado db "Controles actuales", "$"
+  msg_arriba db "Arriba: ", "$"
+  msg_abajo db "Abajo: ", "$"
+  msg_izquierda db "Izquierda: ", "$"
+  msg_derecha db "Derecha: ", "$"
+  msg_cambiar_controles db "Cambiar controles", "$"
+  msg_regresar db "Regresar", "$"
+
+  ; Archivos
+  aux_nivel db 00H ; Representa el archivo que se va a leer para cargar el nivel (00H = Nivel 1 ; 01H = Nivel 2 ; 02H = Nivel 3)
+  arch_nivel_1 db "NIV.00",0
+  arch_nivel_2 db "NIV.01",0
+  arch_nivel_3 db "NIV.10",0
+  handle_archivo dw 0000
 
 .CODE
 .STARTUP
@@ -678,6 +704,121 @@ ENDM
   CARGAR_NIVEL ENDP
 
   CONFIGURACION PROC
+
+    mLimpiarPantalla
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+		MOV DH, 03H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_encabezado
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 04H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_derecha
+		MOV AH, 09
+		INT 21
+    MOV DX, offset msg_caracter_derecha
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_abajo
+		MOV AH, 09
+		INT 21
+    MOV DX, offset msg_caracter_abajo
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_arriba
+		MOV AH, 09
+		INT 21
+    MOV DX, offset msg_caracter_arriba
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_izquierda
+		MOV AH, 09
+		INT 21
+    MOV DX, offset msg_caracter_izquierda
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 04H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_cambiar_controles
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_regresar
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    JMP ENTRADA_CONFIGURACION
+
   CONFIGURACION ENDP
 
   PUNTAJES_ALTOS PROC
@@ -760,6 +901,167 @@ ENDM
 
   ENTRADA_MENU_PRINCIPAL ENDP
 
+  ENTRADA_CONFIGURACION PROC
+
+    ; Se limpia la posicion actual de la flecha
+    MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 290 + 80n
+    MOV AX, 50H ; 80
+    MOV BX, posicion_flecha_configuracion ; n
+    MUL BX ; 80n
+    ADD AX, 2B2H ; 610 + 80n
+    MOV aux_iteracion_sprite, AX
+
+    MOV aux_codigo_sprite, 06H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+
+    ; Se espera hasta que el usuario oprima algun boton del teclado
+    MOV AH, 00
+		INT 16
+
+    ; Presiono la tecla de flecha hacia arriba
+    CMP AH, 48H
+		JE @@hacia_arriba
+
+    ; Presiono la tecla de flecha hacia abajo
+		CMP AH, 50H
+		JE @@hacia_abajo
+
+    ; Presiono la tecla F1
+		CMP AH, 3BH
+		JE @@opcion_seleccionada
+    JMP @@repetir
+
+    @@hacia_arriba:
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 04H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha_configuracion
+      DEC AX
+      CMP AX, 00H
+      JL @@repetir
+
+      ; Se decrementa la posicion de la flecha
+      DEC posicion_flecha_configuracion
+    JMP @@repetir
+
+    @@hacia_abajo:
+
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 01H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha_configuracion
+      INC AX
+      CMP AX, 01H
+      JG @@repetir
+
+      ; Se incrementa la posicion de la flecha
+      INC posicion_flecha_configuracion
+    JMP @@repetir
+
+    @@opcion_seleccionada:
+      CMP posicion_flecha_configuracion, 00H
+      JE ENTRADA_CONFIGURANDO_CONTROLES
+      CMP posicion_flecha_configuracion, 01H
+      JE MENU_PRINCIPAL
+
+    @@repetir:
+		  JMP ENTRADA_CONFIGURACION
+
+  ENTRADA_CONFIGURACION ENDP
+
+  ENTRADA_CONFIGURANDO_CONTROLES PROC
+
+    ; Se limpia la posicion actual de la flecha
+    MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 290 + 80n
+    MOV AX, 50H ; 80
+    MOV BX, posicion_flecha_configuracion ; n
+    MUL BX ; 80n
+    ADD AX, 122H ; 90 + 80n
+    MOV aux_iteracion_sprite, AX
+
+    MOV aux_codigo_sprite, 06H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+
+    ; Se solicita el teclado de la derecha
+    MOV AH, 00
+    INT 16
+
+    CMP aux_solicitud_control, 00H
+    JE @@seleccionar_derecha
+    CMP aux_solicitud_control, 01H
+    JE @@seleccionar_abajo
+    CMP aux_solicitud_control, 02H
+    JE @@seleccionar_arriba
+    CMP aux_solicitud_control, 03H
+    JE @@seleccionar_izquierda
+
+    @@seleccionar_derecha:
+
+      ; Obtengo el codigo y caracter del boton presionado
+      MOV DI, offset msg_caracter_derecha
+      MOV [DI], AL
+      MOV control_derecha, AH
+
+    JMP @@repetir
+
+    @@seleccionar_abajo:
+
+      ; Obtengo el codigo y caracter del boton presionado
+      MOV DI, offset msg_caracter_abajo
+      MOV [DI], AL
+      MOV control_abajo, AH
+
+    JMP @@repetir
+
+    @@seleccionar_arriba:
+
+      ; Obtengo el codigo y caracter del boton presionado
+      MOV DI, offset msg_caracter_arriba
+      MOV [DI], AL
+      MOV control_arriba, AH
+
+    JMP @@repetir
+
+    @@seleccionar_izquierda:
+
+      ; Obtengo el codigo y caracter del boton presionado
+      MOV DI, offset msg_caracter_izquierda
+      MOV [DI], AL
+      MOV control_izquierda, AH
+
+    JMP @@fin
+
+    @@repetir:
+      ; Se solicitara el siguiente teclado
+      INC aux_solicitud_control
+
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se incrementa la posicion de la flecha
+      INC posicion_flecha_configuracion
+
+      ; Se solicita el siguiente teclado
+		  JMP ENTRADA_CONFIGURANDO_CONTROLES
+
+    @@fin:
+      MOV aux_solicitud_control, 00H
+      MOV posicion_flecha_configuracion, 0000H
+      JMP CONFIGURACION
+
+  ENTRADA_CONFIGURANDO_CONTROLES ENDP
+
   MOVIMIENTO_JUGADOR:
 
     ; Se comprueba si hay una tecla disponible para leer sin bloquear la ejecucion del programa
@@ -812,14 +1114,20 @@ ENDM
       JE @@mov_suelo
       CMP aux_tipo_movimiento, 05H
       JE @@objetivo
+      ; CMP aux_tipo_movimiento, 07H
+      ; JE @@mov_caja_sin_obj
       JMP @@fin_entrada_juego
 
     @@mov_pared:
       JMP @@fin_entrada_juego
 
     @@mov_suelo:
+
+      ; Se almacena la posicion anterior del usuario antes de realizar el movimiento, esto se hace para verificar si existia un objetivo
       MOV BX, posicion_jugador
       MOV aux_pos_jugador_anterior, BX
+
+      ; Se pinta reubica a el usuario
       mReubicarSpriteEnLienzo posicion_jugador, 03H
 
       ; Revisar si en la posicion donde estaba anteriormente existio un objetivo
@@ -833,9 +1141,12 @@ ENDM
       JMP @@fin_entrada_juego
 
     @@objetivo:
+
+      ; Se almacena la posicion anterior del usuario antes de realizar el movimiento, esto se hace para verificar si existia un objetivo
       MOV BX, posicion_jugador
       MOV aux_pos_jugador_anterior, BX
 
+      ; Se pinta reubica a el usuario
       mReubicarSpriteEnLienzo posicion_jugador, 03H
       INC aux_cantidad_objetivos
 
