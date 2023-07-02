@@ -402,7 +402,12 @@ ENDM
   msg_puntajes_altos db "PUNTAJES ALTOS", "$"
   msg_salir db "SALIR", "$"
   posicion_flecha dw 0000
+  posicion_flecha_pausa dw 0000H
   posicion_flecha_configuracion dw 0000H
+
+  ; Pausa
+  msg_continuar_juego db "CONTINUAR JUEGO", "$"
+  msg_terminar_juego db "TERMINAR JUEGO", "$"
 
   ; Lienzo
   ; lienzo db 03E8H dup(06H) ; Dimension 40 x 25 = 1000 posiciones
@@ -700,6 +705,42 @@ ENDM
     JMP @@interaccion
   JUEGO ENDP
 
+  PAUSA PROC
+
+    mLimpiarPantalla
+
+    ; Posicionando cursor para dibujar la opcion
+    MOV DL, 0CH
+		MOV DH, 07H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_continuar_juego
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    ; Posicionando cursor para dibujar la opcion
+    MOV DL, 0CH
+    ADD DH, 02H
+		MOV BH, 00H
+		MOV AH, 02H
+		INT 10H
+
+    ; Imprimiendo el texto
+    PUSH DX
+    MOV DX, offset msg_terminar_juego
+		MOV AH, 09
+		INT 21
+    POP DX
+
+    JMP ENTRADA_PAUSA
+
+  PAUSA ENDP
+
   CARGAR_NIVEL PROC
   CARGAR_NIVEL ENDP
 
@@ -901,6 +942,77 @@ ENDM
 
   ENTRADA_MENU_PRINCIPAL ENDP
 
+  ENTRADA_PAUSA PROC
+
+    ; Para determinar la posicion de escritura de la flecha se utilizara la siguiente ecuacion 290 + 80n
+    MOV AX, 50H ; 80
+    MOV BX, posicion_flecha_pausa ; n
+    MUL BX ; 80n
+    ADD AX, 122H ; 290 + 80n
+    MOV aux_iteracion_sprite, AX
+
+    MOV aux_codigo_sprite, 06H ; Se setea el sprite a utilizar
+    mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion que nos da CX
+
+    ; Se espera hasta que el usuario oprima algun boton del teclado
+    MOV AH, 00
+		INT 16
+
+    ; Presiono la tecla de flecha hacia arriba
+    CMP AH, 48H
+		JE @@hacia_arriba
+
+    ; Presiono la tecla de flecha hacia abajo
+		CMP AH, 50H
+		JE @@hacia_abajo
+
+    ; Presiono la tecla F1
+		CMP AH, 3BH
+		JE @@opcion_seleccionada
+    JMP @@repetir
+
+    @@hacia_arriba:
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 04H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha_pausa
+      DEC AX
+      CMP AX, 00H
+      JL @@repetir
+
+      ; Se decrementa la posicion de la flecha
+      DEC posicion_flecha_pausa
+    JMP @@repetir
+
+    @@hacia_abajo:
+
+      ; Se limpia la posicion actual de la flecha
+      MOV aux_codigo_sprite, 00H ; Se setea el sprite a utilizar
+      mPintarSprite aux_iteracion_sprite, aux_codigo_sprite ; Se pinta el bloque del lienzo en la posicion indicada
+
+      ; Se verifica si se sobrepasa la posicion 01H al sumar una posicion mas a la flecha
+      MOV AX, posicion_flecha_pausa
+      INC AX
+      CMP AX, 01H
+      JG @@repetir
+
+      ; Se incrementa la posicion de la flecha
+      INC posicion_flecha_pausa
+    JMP @@repetir
+
+    @@opcion_seleccionada:
+      CMP posicion_flecha_pausa, 00H
+      JE JUEGO
+      CMP posicion_flecha_pausa, 01H
+      JE MENU_PRINCIPAL
+
+    @@repetir:
+		  JMP ENTRADA_PAUSA
+
+  ENTRADA_PAUSA ENDP
+
   ENTRADA_CONFIGURACION PROC
 
     ; Se limpia la posicion actual de la flecha
@@ -1082,9 +1194,9 @@ ENDM
 		JE @@mov_izquierda
 		CMP AH, [control_derecha]
 		JE @@mov_derecha
-    JMP @@fin_entrada_juego
     CMP AH, [control_salida]
-    JE MENU_PRINCIPAL
+    JE PAUSA
+    JMP @@fin_entrada_juego
 
     @@mov_arriba:
       MOV AH, 01H
